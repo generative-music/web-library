@@ -2,7 +2,11 @@
   "name": "@generative-music/web-library",
   "version": "0.0.0",
   "description": "A sample-based instrument library factory",
-  "main": "index.js",
+  "main": "dist/web-library.cjs.js",
+  "module": "dist/web-library.esm.js",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "test": "karma start",
     "test:watch": "karma start --no-single-run",
