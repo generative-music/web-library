@@ -18,30 +18,38 @@ const has = async ({ sampleIndex, provider }, instruments = []) => {
 
   if (instrumentsWithFallbacks.length) {
     const savedIndex = await getSavedIndex();
-    await Promise.all(
-      instrumentsWithFallbacks.map(
-        async ([optionalInstrument, requiredInstrument]) => {
-          const optionalCollection = savedIndex[optionalInstrument];
-          let optionalUrls;
-          if (Array.isArray(optionalCollection)) {
-            optionalUrls = optionalCollection;
-          } else if (
-            optionalCollection !== null &&
-            typeof optionalCollection === 'object'
-          ) {
-            optionalUrls = Object.values(optionalCollection);
+    if (savedIndex === null || typeof savedIndex !== 'object') {
+      requiredInstruments.push(
+        ...instrumentsWithFallbacks.map(
+          ([, requiredInstrument]) => requiredInstrument
+        )
+      );
+    } else {
+      await Promise.all(
+        instrumentsWithFallbacks.map(
+          async ([optionalInstrument, requiredInstrument]) => {
+            const optionalCollection = savedIndex[optionalInstrument];
+            let optionalUrls;
+            if (Array.isArray(optionalCollection)) {
+              optionalUrls = optionalCollection;
+            } else if (
+              optionalCollection !== null &&
+              typeof optionalCollection === 'object'
+            ) {
+              optionalUrls = Object.values(optionalCollection);
+            }
+            if (!optionalUrls) {
+              requiredInstruments.push(requiredInstrument);
+              return;
+            }
+            const hasOptional = await provider.has(optionalUrls);
+            if (!hasOptional) {
+              requiredInstruments.push(requiredInstrument);
+            }
           }
-          if (!optionalUrls) {
-            requiredInstruments.push(requiredInstrument);
-            return;
-          }
-          const hasOptional = await provider.has(optionalUrls);
-          if (!hasOptional) {
-            requiredInstruments.push(requiredInstrument);
-          }
-        }
-      )
-    );
+        )
+      );
+    }
   }
 
   const requiredUrls = [];

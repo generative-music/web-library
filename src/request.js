@@ -23,45 +23,47 @@ const request = async (
 
   if (instrumentsWithFallbacks.length) {
     const savedIndex = await getSavedIndex();
-    await Promise.all(
-      instrumentsWithFallbacks.map(
-        async ([optionalInstrument, requiredInstrument]) => {
-          const optionalCollection = savedIndex[optionalInstrument];
-          let optionalUrls;
-          if (Array.isArray(optionalCollection)) {
-            optionalUrls = optionalCollection;
-          } else if (
-            optionalCollection !== null &&
-            typeof optionalCollection === 'object'
-          ) {
-            optionalUrls = Object.values(optionalCollection);
+    if (savedIndex !== null && typeof savedIndex === 'object') {
+      await Promise.all(
+        instrumentsWithFallbacks.map(
+          async ([optionalInstrument, requiredInstrument]) => {
+            const optionalCollection = savedIndex[optionalInstrument];
+            let optionalUrls;
+            if (Array.isArray(optionalCollection)) {
+              optionalUrls = optionalCollection;
+            } else if (
+              optionalCollection !== null &&
+              typeof optionalCollection === 'object'
+            ) {
+              optionalUrls = Object.values(optionalCollection);
+            }
+            if (!optionalUrls) {
+              instrumentUrlPairs.push([
+                requiredInstrument,
+                sampleIndex[requiredInstrument],
+              ]);
+              return;
+            }
+            const hasOptional = await provider.has(optionalUrls);
+            if (!hasOptional) {
+              instrumentUrlPairs.push([
+                requiredInstrument,
+                sampleIndex[requiredInstrument],
+              ]);
+              return;
+            }
+            instrumentUrlPairs.push([optionalInstrument, optionalCollection]);
           }
-          if (!optionalUrls) {
-            instrumentUrlPairs.push([
-              requiredInstrument,
-              sampleIndex[requiredInstrument],
-            ]);
-            return;
-          }
-          const hasOptional = await provider.has(optionalUrls);
-          if (!hasOptional) {
-            instrumentUrlPairs.push([
-              requiredInstrument,
-              sampleIndex[requiredInstrument],
-            ]);
-            return;
-          }
-          instrumentUrlPairs.push([optionalInstrument, optionalCollection]);
-        }
-      )
-    );
+        )
+      );
+    }
   }
 
   const requestedUrls = [];
   const samples = {};
   const samplePaths = [];
 
-  instrumentUrlPairs.forEach((sampleObj, [instrumentName, urlCollection]) => {
+  instrumentUrlPairs.forEach(([instrumentName, urlCollection]) => {
     if (Array.isArray(urlCollection)) {
       requestedUrls.push(...urlCollection);
       samples[instrumentName] = [];

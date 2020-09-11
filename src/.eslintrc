@@ -6,5 +6,19 @@
   "parserOptions": {
     "sourceType": "module",
     "ecmaVersion": 2017
-  }
+  },
+  "overrides": [
+    {
+      "files": "*.spec.js",
+      "env": {
+        "mocha": true
+      },
+      "globals": {
+        "expect": "readonly"
+      },
+      "rules": {
+        "no-unused-expressions": 0
+      }
+    }
+  ]
 }
