@@ -1,6 +1,6 @@
 {
   "name": "@generative-music/web-library",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A sample-based instrument library factory",
   "main": "dist/web-library.cjs.js",
   "module": "dist/web-library.esm.js",
