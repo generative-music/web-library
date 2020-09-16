@@ -23,7 +23,14 @@ const request = async (
 
   if (instrumentsWithFallbacks.length) {
     const savedIndex = await getSavedIndex();
-    if (savedIndex !== null && typeof savedIndex === 'object') {
+    if (savedIndex === null || typeof savedIndex !== 'object') {
+      instrumentUrlPairs.push(
+        ...instrumentsWithFallbacks.map(([, requiredInstrument]) => [
+          requiredInstrument,
+          sampleIndex[requiredInstrument],
+        ])
+      );
+    } else {
       await Promise.all(
         instrumentsWithFallbacks.map(
           async ([optionalInstrument, requiredInstrument]) => {
