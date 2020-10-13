@@ -1,99 +1,79 @@
 import getSavedIndex from './indexed-db/get-saved-index';
+import isNull from './utils/is-null';
+import sampleCollectionToUrls from './shared/sample-collection-to-urls';
+import getFromIndex from './shared/get-from-index';
+
+const createInstrumentRequest = (instrumentName, sampleCollection) => {
+  const urls = sampleCollectionToUrls(sampleCollection);
+  const attach = (samples, audioBuffers) => {
+    if (Array.isArray(sampleCollection)) {
+      samples[instrumentName] = audioBuffers;
+      return samples;
+    }
+    if (typeof sampleCollection === 'object' && sampleCollection !== null) {
+      const keys = Object.keys(sampleCollection);
+      const audioBufferCollection = audioBuffers.reduce(
+        (collection, audioBuffer, i) => {
+          const key = keys[i];
+          collection[key] = audioBuffer;
+          return collection;
+        },
+        {}
+      );
+      samples[instrumentName] = audioBufferCollection;
+      return samples;
+    }
+    samples[instrumentName] = null;
+    return samples;
+  };
+
+  return {
+    urls,
+    attach,
+  };
+};
+
+const getRequestsFromIndex = (sampleIndex, instrumentGroup) => {
+  const [instrumentName, sampleCollection] = getFromIndex(
+    sampleIndex,
+    instrumentGroup
+  );
+  return createInstrumentRequest(instrumentName, sampleCollection);
+};
 
 const request = async (
   { sampleIndex, provider },
   audioContext,
   instruments = []
 ) => {
-  const instrumentsWithFallbacks = [];
-  const instrumentUrlPairs = [];
+  let instrumentRequests = instruments.map((instrumentGroup) =>
+    getRequestsFromIndex(sampleIndex, instrumentGroup)
+  );
 
-  instruments.forEach((instrument) => {
-    if (Array.isArray(instrument)) {
-      if (instrument.length >= 2) {
-        instrumentsWithFallbacks.push(instrument);
-      } else {
-        const [instrumentName] = instrument;
-        instrumentUrlPairs.push([instrumentName, sampleIndex[instrumentName]]);
+  if (instrumentRequests.some(({ urls }) => isNull(urls))) {
+    const cacheIndex = await getSavedIndex();
+    instrumentRequests = instruments.map((instrumentGroup, i) => {
+      const instrumentRequest = instrumentRequests[i];
+      if (instrumentRequest.urls === null) {
+        return getRequestsFromIndex(cacheIndex, instrumentGroup);
       }
-    } else {
-      instrumentUrlPairs.push([instrument, sampleIndex[instrument]]);
-    }
-  });
-
-  if (instrumentsWithFallbacks.length) {
-    const savedIndex = await getSavedIndex();
-    if (savedIndex === null || typeof savedIndex !== 'object') {
-      instrumentUrlPairs.push(
-        ...instrumentsWithFallbacks.map(([, requiredInstrument]) => [
-          requiredInstrument,
-          sampleIndex[requiredInstrument],
-        ])
-      );
-    } else {
-      await Promise.all(
-        instrumentsWithFallbacks.map(
-          async ([optionalInstrument, requiredInstrument]) => {
-            const optionalCollection = savedIndex[optionalInstrument];
-            let optionalUrls;
-            if (Array.isArray(optionalCollection)) {
-              optionalUrls = optionalCollection;
-            } else if (
-              optionalCollection !== null &&
-              typeof optionalCollection === 'object'
-            ) {
-              optionalUrls = Object.values(optionalCollection);
-            }
-            if (!optionalUrls) {
-              instrumentUrlPairs.push([
-                requiredInstrument,
-                sampleIndex[requiredInstrument],
-              ]);
-              return;
-            }
-            const hasOptional = await provider.has(optionalUrls);
-            if (!hasOptional) {
-              instrumentUrlPairs.push([
-                requiredInstrument,
-                sampleIndex[requiredInstrument],
-              ]);
-              return;
-            }
-            instrumentUrlPairs.push([optionalInstrument, optionalCollection]);
-          }
-        )
-      );
-    }
+      return instrumentRequest;
+    });
   }
 
-  const requestedUrls = [];
-  const samples = {};
-  const samplePaths = [];
+  const instrumentRequestsWithUrls = instrumentRequests.filter(
+    ({ urls }) => urls !== null
+  );
 
-  instrumentUrlPairs.forEach(([instrumentName, urlCollection]) => {
-    if (Array.isArray(urlCollection)) {
-      requestedUrls.push(...urlCollection);
-      samples[instrumentName] = [];
-      samplePaths.push(...urlCollection.map((_, i) => [instrumentName, i]));
-      return;
-    } else if (urlCollection !== null && typeof urlCollection === 'object') {
-      const urls = Object.values(urlCollection);
-      const notes = Object.keys(urlCollection);
-      requestedUrls.push(...urls);
-      samples[instrumentName] = {};
-      samplePaths.push(...notes.map((note) => [instrumentName, note]));
-      return;
+  const allUrls = instrumentRequestsWithUrls.map(({ urls }) => urls).flat();
+  const allAudioBuffers = await provider.request(audioContext, allUrls);
+  const samples = instrumentRequestsWithUrls.reduce((o, { urls, attach }) => {
+    if (urls === null) {
+      return samples;
     }
-    throw Error(
-      `Requested instrument "${instrumentName}" could not be found in the specified sample index`
-    );
+    const instrumentAudioBuffers = allAudioBuffers.splice(0, urls.length);
+    return attach(o, instrumentAudioBuffers);
   }, {});
-
-  const results = await provider.request(audioContext, requestedUrls);
-  results.forEach((audioBuffer, i) => {
-    const [instrumentName, propertyName] = samplePaths[i];
-    samples[instrumentName][propertyName] = audioBuffer;
-  });
 
   return samples;
 };

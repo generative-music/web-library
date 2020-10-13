@@ -36,7 +36,7 @@ describe('has', () => {
     );
   });
 
-  it('should resolve with false if any of the required instruments are not in the sample index', async () => {
+  it('should resolve with false if any of the instruments are not in the sample index or the cache index', async () => {
     const result = await has({ sampleIndex: {}, provider: {} }, ['nope']);
     expect(result).to.be.false;
   });

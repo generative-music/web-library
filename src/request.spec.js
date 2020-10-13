@@ -42,6 +42,7 @@ describe('request', () => {
         E: 'fallback2/url1',
         F: 'fallback2/url2',
       },
+      indexed: ['indexed/url1', 'indexed/url2'],
     };
 
     const provider = {
@@ -54,6 +55,7 @@ describe('request', () => {
       ['saved', 'unused'],
       ['unsaved', 'fallback1'],
       ['nonexistant', 'fallback2'],
+      ['indexed', 'unused'],
     ]);
 
     expect(result).to.have.deep.property(
@@ -83,5 +85,9 @@ describe('request', () => {
         return o;
       }, {})
     );
+
+    expect(result)
+      .to.have.deep.property('indexed')
+      .with.members(sampleIndex.indexed.map(markUrlRequested));
   });
 });
