@@ -52,13 +52,15 @@ const request = async (
 
   if (instrumentRequests.some(({ urls }) => isNull(urls))) {
     const cacheIndex = await getSavedIndex();
-    instrumentRequests = instruments.map((instrumentGroup, i) => {
-      const instrumentRequest = instrumentRequests[i];
-      if (instrumentRequest.urls === null) {
-        return getRequestsFromIndex(cacheIndex, instrumentGroup);
-      }
-      return instrumentRequest;
-    });
+    if (typeof cacheIndex === 'object' && cacheIndex !== null) {
+      instrumentRequests = instruments.map((instrumentGroup, i) => {
+        const instrumentRequest = instrumentRequests[i];
+        if (instrumentRequest.urls === null) {
+          return getRequestsFromIndex(cacheIndex, instrumentGroup);
+        }
+        return instrumentRequest;
+      });
+    }
   }
 
   const instrumentRequestsWithUrls = instrumentRequests.filter(

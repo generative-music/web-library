@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - None
 
+## [0.2.1] - 2020-10-24
+
+### Fixed
+
+- `request` doesn't fail when there is no cached index
+
 ## [0.2.0] - 2020-10-12
 
 ### Changed
