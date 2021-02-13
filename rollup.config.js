@@ -1,5 +1,9 @@
 'use strict';
 
+const babelPlugin = require('@rollup/plugin-babel');
+
+const babel = babelPlugin.default;
+
 const config = {
   input: './src/create-library.js',
   output: [
@@ -13,7 +17,13 @@ const config = {
       exports: 'auto',
     },
   ],
-  external: [/@alexbainter\/indexed-db/],
+  external: [
+    /@alexbainter\/indexed-db/,
+    /@babel\/runtime/,
+    /core-js/,
+    /regenerator-runtime/,
+  ],
+  plugins: [babel({ babelHelpers: 'runtime' })],
 };
 
 module.exports = config;
